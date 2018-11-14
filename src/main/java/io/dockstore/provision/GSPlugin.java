@@ -15,12 +15,17 @@
  */
 package io.dockstore.provision;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,18 +101,6 @@ public class GSPlugin extends Plugin {
             this.config = map;
         }
 
-/*
-        private AmazonS3 getAmazonS3Client() {
-            AmazonS3 s3Client = new AmazonS3Client(new ClientConfiguration().withSignerOverride("S3Signer"));
-            if (config.containsKey(S3_ENDPOINT)) {
-                final String endpoint = config.get(S3_ENDPOINT);
-                System.err.println("found custom S3 endpoint, setting to " + endpoint);
-                s3Client.setEndpoint(endpoint);
-                s3Client.setS3ClientOptions(S3ClientOptions.builder().setPathStyleAccess(true).build());
-            }
-            return s3Client;
-        }
-*/
         private Storage getGoogleGSClient() {
             Storage gsClient = StorageOptions.getDefaultInstance().getService();
             return gsClient;
@@ -118,33 +111,22 @@ public class GSPlugin extends Plugin {
         }
 
         public boolean downloadFrom(String sourcePath, Path destination) {
-            System.out.println("destination: " + destination.toString());
-            System.out.println("source path:" + sourcePath);
-
             Storage gsClient = getGoogleGSClient();
             String trimmedPath = sourcePath.replace("gs://", "");
             List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
-            System.out.println("split path list is" + splitPathList.toString());
             String bucketName = splitPathList.remove(0);
-            // Get specific file from specified bucket
-            System.out.println("split path list after removing bucket" + splitPathList.toString());
-
             String blobName = String.join(File.separator, splitPathList);
 
-            System.out.println("bucket name:" + bucketName);
-            System.out.println("trimmed path:" + trimmedPath);
-            System.out.println("blob name:" + blobName);
-
-            BlobId blob_id = BlobId.of(bucketName, blobName);
-            System.out.println("blob id is:" + blob_id.toString());
-
+            //BlobId blob_id = BlobId.of(bucketName, blobName);
             Blob blob = null;
             try {
-                blob = gsClient.get(blob_id);
+                //blob = gsClient.get(blob_id);
+                blob = gsClient.get(BlobId.of(bucketName, blobName));
             } catch (StorageException e) {
                 System.err.println("gsClient get download exception:" + e.getMessage());
                 return false;
             }
+
             //Blob blob = gsClient.get(BlobId.of(bucketName, trimmedPath));
             // Download file to specified path
             if(blob != null) {
@@ -152,42 +134,16 @@ public class GSPlugin extends Plugin {
                     blob.downloadTo(destination);
                 } catch (StorageException e) {
                     System.err.println("Blob download exception:" + e.getMessage());
+                    throw new RuntimeException("Could not provision input files from Google Cloud Storage", e);
                 }
                 return true;
             }
             else {
-                System.out.println("blob was null !!!!!!!!");
+                System.err.println("Download from GCS failed. Could not find GCS bucket or path. "
+                        + "Please verify that the GCS bucket and path exist.");
                 return false;
             }
         }
-
-/*
-        public boolean downloadFrom(String sourcePath, Path destination) {
-            AmazonS3 s3Client = getAmazonS3Client();
-            TransferManager tx = TransferManagerBuilder.standard().withS3Client(s3Client).build();
-            String trimmedPath = sourcePath.replace("s3://", "");
-            List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
-            String bucketName = splitPathList.remove(0);
-
-            S3Object object = s3Client.getObject(new GetObjectRequest(bucketName, Joiner.on("/").join(splitPathList)));
-            try {
-                GetObjectRequest request = new GetObjectRequest(bucketName, Joiner.on("/").join(splitPathList));
-                request.setGeneralProgressListener(getProgressListener(object.getObjectMetadata().getContentLength()));
-                Download download = tx.download(request, destination.toFile());
-                download.waitForCompletion();
-                Transfer.TransferState state = download.getState();
-                return state == Transfer.TransferState.Completed;
-            } catch (SdkBaseException e) {
-                throw new RuntimeException("Could not provision input files from S3", e);
-            } catch (InterruptedException e) {
-                System.err.println("Upload to S3 failed " + e.getMessage());
-                throw new RuntimeException(e);
-            } finally {
-                tx.shutdownNow(true);
-            }
-        }
-*/
-
 
         public boolean uploadTo(String destPath, Path sourceFile, Optional<String> metadata) {
             long inputSize = sourceFile.toFile().length();
@@ -196,98 +152,67 @@ public class GSPlugin extends Plugin {
             String trimmedPath = destPath.replace("gs://", "");
             List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
             String bucketName = splitPathList.remove(0);
-            //bId blobId = BlobId.of("bucket", "blob_name");
-            //BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build();
-            //Blob blob = storage.create(blobInfo, "Hello, Cloud Storage!".getBytes(UTF_8));
-
             String blobName = String.join(File.separator, splitPathList);
 
             BlobId blobId = BlobId.of(bucketName, blobName);
-            BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build();
+            // Initialize BlobInfo to a default object
+            //BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build();
+            BlobInfo blobInfo = null;
 
-            //PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, Joiner.on("/").join(splitPathList), sourceFile.toFile());
+            // To test metadata uncomment the lines below
+            //Map<String,String> myMap = new HashMap<String, String>();
+            //myMap.put("goat", "bleat");
+            //myMap.put("cow", "moo");
+            //metadata = Optional.of(myMap.toString());
+
             if (metadata.isPresent()) {
-                //ObjectMetadata md = new ObjectMetadata();
-                //md.setContentLength(inputSize);
-
                 Gson gson = new Gson();
                 Type type = new TypeToken<Map<String, String>>() {
-                }.getType();
-                try {
+              }.getType();
 
+                try {
                     Map<String, String> map = gson.fromJson(metadata.get(), type);
                     for (Map.Entry<String, String> entry : map.entrySet()) {
                         System.out.println("Loading " + entry.getKey() + "->" + entry.getValue());
-                        //md.getUserMetadata().put(entry.getKey(), entry.getValue());
                     }
+                    blobInfo = BlobInfo.newBuilder(blobId).setMetadata(map).build();
                 } catch (com.google.gson.JsonSyntaxException ex) {
-                    //md.getUserMetadata().put("encoded_metadata", metadata.get());
+                    System.err.println("Could not load metadata. Metadata syntax exception. Uploading file without metadata:" + ex.getMessage());
+                    blobInfo = BlobInfo.newBuilder(blobId).build();
                 }
-                //putObjectRequest.setMetadata(md);
             }
+            else {
+                blobInfo = BlobInfo.newBuilder(blobId).build();
+            }
+
             //putObjectRequest.setGeneralProgressListener(getProgressListener(inputSize));
 
-            //how to get putObjectRequest into blob???????????
-            byte[] fileContent = {0};
+            byte[] fileContent = null;
             try {
                 fileContent = Files.readAllBytes(sourceFile);
             } catch (IOException e) {
-                System.err.println("File read bytes exception:" + e.getMessage());
+                System.err.println("Could not read all bytes from file. File read bytes exception:" + e.getMessage());
+                return false;
             }
+
+            //File sourceFileToUpload = new File(sourceFile.toString());
+            //InputStream fileContent;
+            //try {
+            //    fileContent = new FileInputStream(sourceFileToUpload);
+            //} catch (FileNotFoundException e) {
+            //    System.err.println("File not found exception:" + e.getMessage());
+            //    return false;
+            //}
+
+
             try {
                 Blob blob = gsClient.create(blobInfo, fileContent);
             } catch (StorageException e) {
-                System.err.println("Blob upload exception:" + e.getMessage());
+                System.err.println("Could not upload file. GCS storage upload exception:" + e.getMessage());
                 return false;
             }
             return true;
         }
-/*
-        public boolean uploadTo(String destPath, Path sourceFile, Optional<String> metadata) {
-            long inputSize = sourceFile.toFile().length();
-            AmazonS3 s3Client = getAmazonS3Client();
-            TransferManager tx = TransferManagerBuilder.standard().withS3Client(s3Client).build();
-
-            String trimmedPath = destPath.replace("s3://", "");
-            List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
-            String bucketName = splitPathList.remove(0);
-
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, Joiner.on("/").join(splitPathList), sourceFile.toFile());
-            if (metadata.isPresent()) {
-                ObjectMetadata md = new ObjectMetadata();
-                md.setContentLength(inputSize);
-
-                Gson gson = new Gson();
-                Type type = new TypeToken<Map<String, String>>() {
-                }.getType();
-                try {
-
-                    Map<String, String> map = gson.fromJson(metadata.get(), type);
-                    for (Map.Entry<String, String> entry : map.entrySet()) {
-                        System.out.println("Loading " + entry.getKey() + "->" + entry.getValue());
-                        md.getUserMetadata().put(entry.getKey(), entry.getValue());
-                    }
-                } catch (com.google.gson.JsonSyntaxException ex) {
-                    md.getUserMetadata().put("encoded_metadata", metadata.get());
-                }
-                putObjectRequest.setMetadata(md);
-            }
-
-            putObjectRequest.setGeneralProgressListener(getProgressListener(inputSize));
-            try {
-                Upload upload = tx.upload(putObjectRequest);
-                upload.waitForUploadResult();
-                Transfer.TransferState state = upload.getState();
-                return state == Transfer.TransferState.Completed;
-            } catch (InterruptedException e) {
-                System.err.println("Upload to S3 failed " + e.getMessage());
-                throw new RuntimeException(e);
-            } finally {
-                tx.shutdownNow(true);
-            }
-        }
-
-*/
     }
 }
 
