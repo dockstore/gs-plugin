@@ -15,35 +15,23 @@
  */
 package io.dockstore.provision;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-// Imports the Google Cloud client library
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Bucket;
-import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -52,6 +40,8 @@ import ro.fortsoft.pf4j.Extension;
 import ro.fortsoft.pf4j.Plugin;
 import ro.fortsoft.pf4j.PluginWrapper;
 import ro.fortsoft.pf4j.RuntimeMode;
+
+// Imports the Google Cloud client library
 
 /**
  * @author wshands
@@ -97,6 +87,7 @@ public class GSPlugin extends Plugin {
 
         private static final String GS_ENDPOINT = "endpoint";
         private Map<String, String> config;
+
         public void setConfiguration(Map<String, String> map) {
             this.config = map;
         }
@@ -117,19 +108,15 @@ public class GSPlugin extends Plugin {
             String bucketName = splitPathList.remove(0);
             String blobName = String.join(File.separator, splitPathList);
 
-            //BlobId blob_id = BlobId.of(bucketName, blobName);
             Blob blob = null;
             try {
-                //blob = gsClient.get(blob_id);
                 blob = gsClient.get(BlobId.of(bucketName, blobName));
             } catch (StorageException e) {
                 System.err.println("gsClient get download exception:" + e.getMessage());
                 return false;
             }
 
-            //Blob blob = gsClient.get(BlobId.of(bucketName, trimmedPath));
-            // Download file to specified path
-            if(blob != null) {
+            if (blob != null) {
                 try {
                     blob.downloadTo(destination);
                 } catch (StorageException e) {
@@ -137,8 +124,7 @@ public class GSPlugin extends Plugin {
                     throw new RuntimeException("Could not provision input files from Google Cloud Storage", e);
                 }
                 return true;
-            }
-            else {
+            } else {
                 System.err.println("Download from GCS failed. Could not find GCS bucket or path. "
                         + "Please verify that the GCS bucket and path exist.");
                 return false;
@@ -168,7 +154,7 @@ public class GSPlugin extends Plugin {
             if (metadata.isPresent()) {
                 Gson gson = new Gson();
                 Type type = new TypeToken<Map<String, String>>() {
-              }.getType();
+                }.getType();
 
                 try {
                     Map<String, String> map = gson.fromJson(metadata.get(), type);
@@ -177,11 +163,11 @@ public class GSPlugin extends Plugin {
                     }
                     blobInfo = BlobInfo.newBuilder(blobId).setMetadata(map).build();
                 } catch (com.google.gson.JsonSyntaxException ex) {
-                    System.err.println("Could not load metadata. Metadata syntax exception. Uploading file without metadata:" + ex.getMessage());
+                    System.err.println(
+                            "Could not load metadata. Metadata syntax exception. Uploading file without metadata:" + ex.getMessage());
                     blobInfo = BlobInfo.newBuilder(blobId).build();
                 }
-            }
-            else {
+            } else {
                 blobInfo = BlobInfo.newBuilder(blobId).build();
             }
 
@@ -203,7 +189,6 @@ public class GSPlugin extends Plugin {
             //    System.err.println("File not found exception:" + e.getMessage());
             //    return false;
             //}
-
 
             try {
                 Blob blob = gsClient.create(blobInfo, fileContent);
