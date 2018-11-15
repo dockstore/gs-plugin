@@ -129,6 +129,16 @@ public class GSPlugin extends Plugin {
                 return false;
             }
 */
+            // The destination path does not exist when a WDL workflow
+            // or tool is run so make sure the directories in the path exist
+            try {
+                Files.createDirectories(destination.getParent());
+            }
+            catch (IOException e) {
+                System.err.println("Could not create destination path. IO exception:" + e.getMessage());
+                return false;
+            }
+
             ProgressPrinter printer = new ProgressPrinter();
 
             FileOutputStream fileContent = null;
