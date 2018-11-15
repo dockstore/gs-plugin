@@ -28,6 +28,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -74,23 +75,6 @@ public class GSPlugin extends Plugin {
     public void stop() {
         System.out.println("GSPlugin.stop()");
     }
-
-
-/*
-    static ProgressListener getProgressListener(final long inputSize) {
-        return new ProgressListener() {
-            ProgressPrinter printer = new ProgressPrinter();
-            long runningTotal = 0;
-            @Override
-            public void progressChanged(ProgressEvent progressEvent) {
-                if (progressEvent.getEventType() == ProgressEventType.REQUEST_BYTE_TRANSFER_EVENT) {
-                    runningTotal += progressEvent.getBytesTransferred();
-                }
-                printer.handleProgress(runningTotal, inputSize);
-            }
-        };
-    }
-*/
 
     @Extension
     public static class GSProvision implements ProvisionInterface {
@@ -203,6 +187,10 @@ public class GSPlugin extends Plugin {
                 System.err.println("Could not get content type of file. Using default content type. IO exception:" + e.getMessage());
             }
 
+            // Bug on Mac where Files.probeContentType returns null
+            if (contentType == null)
+                contentType = "application/octet-stream";
+
             Storage gsClient = getGoogleGSClient();
 
             String trimmedPath = destPath.replace("gs://", "");
@@ -211,8 +199,6 @@ public class GSPlugin extends Plugin {
             String blobName = String.join(File.separator, splitPathList);
 
             BlobId blobId = BlobId.of(bucketName, blobName);
-            // Initialize BlobInfo to a default object
-            //BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build();
             BlobInfo blobInfo = null;
 
 
@@ -242,7 +228,6 @@ public class GSPlugin extends Plugin {
                 blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).build();
             }
 
-            //putObjectRequest.setGeneralProgressListener(getProgressListener(inputSize));
 /*
             byte[] fileContent = null;
             try {
