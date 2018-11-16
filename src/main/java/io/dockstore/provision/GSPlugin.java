@@ -283,12 +283,16 @@ public class GSPlugin extends Plugin {
                                 runningTotal = runningTotal + limit;
                                 printer.handleProgress(runningTotal, inputSize);
                             } catch (Exception ex) {
+                                System.err.println("Could not write file:" + ex.getMessage());
                                 ex.printStackTrace();
                                 return false;
                             }
                         }
+                    } catch (FileNotFoundException e) {
+                        System.err.println("File not found exception:" + e.getMessage());
+                        return false;
                     }
-
+                    writer.close();
                 } catch (IOException e) {
                     System.err.println("Could not upload file. IO exception:" + e.getMessage());
                     return false;
