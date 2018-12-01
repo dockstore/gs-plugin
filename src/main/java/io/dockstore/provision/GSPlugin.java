@@ -77,7 +77,6 @@ public class GSPlugin extends Plugin {
     @Extension
     public static class GSProvision implements ProvisionInterface {
 
-        private static final String GS_ENDPOINT = "endpoint";
         private static final int MAX_FILE_SIZE_FOR_SINGLE_WRITE = 1_000_000;
         private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024;
         private static final int UPLOAD_BUFFER_SIZE = 1024;
