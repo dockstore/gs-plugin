@@ -88,8 +88,7 @@ public class GSPlugin extends Plugin {
         }
 
         private Storage getGoogleGSClient() {
-            Storage gsClient = StorageOptions.getDefaultInstance().getService();
-            return gsClient;
+            return StorageOptions.getDefaultInstance().getService();
         }
 
         public Set<String> schemesHandled() {
@@ -107,7 +106,7 @@ public class GSPlugin extends Plugin {
             Blob blobMetadata = gsClient.get(bucketName, blobName, Storage.BlobGetOption.fields(Storage.BlobField.values()));
             long inputSize = blobMetadata.getSize();
 
-            Blob blob = null;
+            Blob blob;
             try {
                 blob = gsClient.get(BlobId.of(bucketName, blobName));
             } catch (StorageException e) {
@@ -127,7 +126,7 @@ public class GSPlugin extends Plugin {
 
             ProgressPrinter printer = new ProgressPrinter();
 
-            FileOutputStream fileContent = null;
+            FileOutputStream fileContent;
             try {
                 fileContent = new FileOutputStream((destination.toFile()));
             } catch (FileNotFoundException e) {
@@ -152,7 +151,7 @@ public class GSPlugin extends Plugin {
                     WritableByteChannel channel = Channels.newChannel(writeTo);
                     ByteBuffer bytes = ByteBuffer.allocate(DOWNLOAD_BUFFER_SIZE);
                     try {
-                        int limit = 0;
+                        int limit;
                         long runningTotal = 0;
                         while ((limit = reader.read(bytes)) > 0) {
                             bytes.flip();
@@ -195,7 +194,7 @@ public class GSPlugin extends Plugin {
             String blobName = String.join(File.separator, splitPathList);
 
             BlobId blobId = BlobId.of(bucketName, blobName);
-            BlobInfo blobInfo = null;
+            BlobInfo blobInfo;
 
 
             // To test metadata uncomment the lines below
@@ -256,7 +255,7 @@ public class GSPlugin extends Plugin {
                     return false;
                 }
             } else {
-                byte[] bytes = null;
+                byte[] bytes;
                 try {
                     bytes = Files.readAllBytes(sourceFile);
                 } catch (IOException e) {
