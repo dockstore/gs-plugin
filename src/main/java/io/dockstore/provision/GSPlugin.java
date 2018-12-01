@@ -16,7 +16,6 @@
 package io.dockstore.provision;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -28,7 +27,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +78,9 @@ public class GSPlugin extends Plugin {
     public static class GSProvision implements ProvisionInterface {
 
         private static final String GS_ENDPOINT = "endpoint";
+        private static final int MAX_FILE_SIZE_FOR_SINGLE_WRITE = 1_000_000;
+        private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024;
+        private static final int UPLOAD_BUFFER_SIZE = 1024;
         private Map<String, String> config;
 
         public void setConfiguration(Map<String, String> map) {
@@ -97,6 +98,7 @@ public class GSPlugin extends Plugin {
 
         public boolean downloadFrom(String sourcePath, Path destination) {
             Storage gsClient = getGoogleGSClient();
+
             String trimmedPath = sourcePath.replace("gs://", "");
             List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
             String bucketName = splitPathList.remove(0);
@@ -113,22 +115,6 @@ public class GSPlugin extends Plugin {
                 return false;
             }
 
-/*
-            if (blob != null) {
-
-                try {
-                    blob.downloadTo(destination);
-                } catch (StorageException e) {
-                    System.err.println("Blob download exception:" + e.getMessage());
-                    throw new RuntimeException("Could not provision input files from Google Cloud Storage", e);
-                }
-                return true;
-            } else {
-                System.err.println("Download from GCS failed. Could not find GCS bucket or path. "
-                        + "Please verify that the GCS bucket and path exist.");
-                return false;
-            }
-*/
             // The destination path does not exist when a WDL workflow
             // or tool is run so make sure the directories in the path exist
             try {
@@ -148,9 +134,10 @@ public class GSPlugin extends Plugin {
                 System.err.println("File not found exception:" + e.getMessage());
                 return false;
             }
+
             PrintStream writeTo = new PrintStream(fileContent);
 
-            if (blob.getSize() < 1_000_000) {
+            if (blob.getSize() < MAX_FILE_SIZE_FOR_SINGLE_WRITE) {
                 // Blob is small read all its content in one request
                 byte[] content = blob.getContent();
                 try {
@@ -159,12 +146,11 @@ public class GSPlugin extends Plugin {
                     System.err.println("Could not write download file. IO exception:" + e.getMessage());
                     return false;
                 }
-
             } else {
                 // When Blob size is big or unknown use the blob's channel reader.
                 try (ReadChannel reader = blob.reader()) {
                     WritableByteChannel channel = Channels.newChannel(writeTo);
-                    ByteBuffer bytes = ByteBuffer.allocate(64 * 1024);
+                    ByteBuffer bytes = ByteBuffer.allocate(DOWNLOAD_BUFFER_SIZE);
                     try {
                         int limit = 0;
                         long runningTotal = 0;
@@ -238,42 +224,14 @@ public class GSPlugin extends Plugin {
                 blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).build();
             }
 
-/*
-            byte[] fileContent = null;
-            try {
-                fileContent = Files.readAllBytes(sourceFile);
-            } catch (IOException e) {
-                System.err.println("Could not read all bytes from file. File read bytes exception:" + e.getMessage());
-                return false;
-            }
-
-            //File sourceFileToUpload = new File(sourceFile.toString());
-            //InputStream fileContent;
-            //try {
-            //    fileContent = new FileInputStream(sourceFileToUpload);
-            //} catch (FileNotFoundException e) {
-            //    System.err.println("File not found exception:" + e.getMessage());
-            //    return false;
-            //}
-
-            try {
-                Blob blob = gsClient.create(blobInfo, fileContent);
-            } catch (StorageException e) {
-                System.err.println("Could not upload file. GCS storage upload exception:" + e.getMessage());
-                return false;
-            }
-            return true;
-*/
-
-
             ProgressPrinter printer = new ProgressPrinter();
 
-            if (inputSize > 1_000_000) {
+            if (inputSize > MAX_FILE_SIZE_FOR_SINGLE_WRITE) {
                 // When content is not available or large (1MB or more) it is recommended
                 // to write it in chunks via the blob's channel writer.
                 try {
                     WriteChannel writer = gsClient.writer(blobInfo);
-                    byte[] buffer = new byte[1024];
+                    byte[] buffer = new byte[UPLOAD_BUFFER_SIZE];
                     try (InputStream input = Files.newInputStream(sourceFile)) {
                         int limit;
                         long runningTotal = 0;
