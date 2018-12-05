@@ -90,6 +90,25 @@ public class GSPlugin extends Plugin {
             return StorageOptions.getDefaultInstance().getService();
         }
 
+        private List<String> getSplitPathList(String path) {
+            String trimmedPath = path.replace("gs://", "");
+            //List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
+            return Lists.newArrayList(trimmedPath.split("/"));
+        }
+
+        private String getBucketName(String path) {
+            List<String> splitPathList = getSplitPathList(path);
+            return splitPathList.remove(0);
+        }
+
+        // Get the path to the source file minus the scheme and bucket name
+        private String getBlobName(String path) {
+            List<String> splitPathList = getSplitPathList(path);
+            // Remove the bucket name from the path
+            List<String> splitPathListNoBucket = splitPathList.subList(1, splitPathList.size() + 1);
+            return String.join(File.separator, splitPathListNoBucket);
+        }
+
         public Set<String> schemesHandled() {
             return new HashSet<>(Lists.newArrayList("gs"));
         }
@@ -97,10 +116,13 @@ public class GSPlugin extends Plugin {
         public boolean downloadFrom(String sourcePath, Path destination) {
             Storage gsClient = getGoogleGSClient();
 
-            String trimmedPath = sourcePath.replace("gs://", "");
-            List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
-            String bucketName = splitPathList.remove(0);
-            String blobName = String.join(File.separator, splitPathList);
+            //String trimmedPath = sourcePath.replace("gs://", "");
+            //List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
+            //String bucketName = splitPathList.remove(0);
+            //String blobName = String.join(File.separator, splitPathList);
+
+            String bucketName = getBucketName(sourcePath);
+            String blobName = getBlobName(sourcePath);
 
             Blob blobMetadata = gsClient.get(bucketName, blobName, Storage.BlobGetOption.fields(Storage.BlobField.values()));
             long inputSize = blobMetadata.getSize();
@@ -187,10 +209,14 @@ public class GSPlugin extends Plugin {
 
             Storage gsClient = getGoogleGSClient();
 
-            String trimmedPath = destPath.replace("gs://", "");
-            List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
-            String bucketName = splitPathList.remove(0);
-            String blobName = String.join(File.separator, splitPathList);
+            //String trimmedPath = destPath.replace("gs://", "");
+            //List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
+            //String bucketName = splitPathList.remove(0);
+            //String blobName = String.join(File.separator, splitPathList);
+
+            String bucketName = getBucketName(destPath);
+            String blobName = getBlobName(destPath);
+
 
             BlobId blobId = BlobId.of(bucketName, blobName);
             BlobInfo blobInfo;
