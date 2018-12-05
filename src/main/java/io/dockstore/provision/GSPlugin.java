@@ -138,8 +138,7 @@ public class GSPlugin extends Plugin {
             // or tool is run so make sure the directories in the path exist
             try {
                 Files.createDirectories(destination.getParent());
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 System.err.println("Could not create destination path. IO exception:" + e.getMessage());
                 return false;
             }
@@ -216,10 +215,8 @@ public class GSPlugin extends Plugin {
             String bucketName = getBucketName(destPath);
             String blobName = getBlobName(destPath);
 
-
             BlobId blobId = BlobId.of(bucketName, blobName);
             BlobInfo blobInfo;
-
 
             // To test metadata uncomment the lines below
             //Map<String,String> myMap = new HashMap<String, String>();
@@ -234,9 +231,9 @@ public class GSPlugin extends Plugin {
 
                 try {
                     Map<String, String> map = gson.fromJson(metadata.get(), type);
-                    for (Map.Entry<String, String> entry : map.entrySet()) {
-                        System.out.println("Loading " + entry.getKey() + "->" + entry.getValue());
-                    }
+                    //for (Map.Entry<String, String> entry : map.entrySet()) {
+                    //    System.out.println("Loading " + entry.getKey() + "->" + entry.getValue());
+                    //}
                     blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).setMetadata(map).build();
                 } catch (com.google.gson.JsonSyntaxException ex) {
                     System.err.println(
@@ -287,7 +284,12 @@ public class GSPlugin extends Plugin {
                     return false;
                 }
                 // create the blob in one request.
-                gsClient.create(blobInfo, bytes);
+                try {
+                    gsClient.create(blobInfo, bytes);
+                } catch (StorageException e) {
+                    System.err.println("Could not upload file. Storage exception:" + e.getMessage());
+                    return false;
+                }
             }
             return true;
         }
