@@ -92,20 +92,19 @@ public class GSPlugin extends Plugin {
 
         private List<String> getSplitPathList(String path) {
             String trimmedPath = path.replace("gs://", "");
-            //List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
             return Lists.newArrayList(trimmedPath.split("/"));
         }
 
-        private String getBucketName(String path) {
+        protected String getBucketName(String path) {
             List<String> splitPathList = getSplitPathList(path);
             return splitPathList.remove(0);
         }
 
         // Get the path to the source file minus the scheme and bucket name
-        private String getBlobName(String path) {
+        protected String getBlobName(String path) {
             List<String> splitPathList = getSplitPathList(path);
             // Remove the bucket name from the path
-            List<String> splitPathListNoBucket = splitPathList.subList(1, splitPathList.size() + 1);
+            List<String> splitPathListNoBucket = splitPathList.subList(1, splitPathList.size());
             return String.join(File.separator, splitPathListNoBucket);
         }
 
