@@ -116,11 +116,6 @@ public class GSPlugin extends Plugin {
         public boolean downloadFrom(String sourcePath, Path destination) {
             Storage gsClient = getGoogleGSClient();
 
-            //String trimmedPath = sourcePath.replace("gs://", "");
-            //List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
-            //String bucketName = splitPathList.remove(0);
-            //String blobName = String.join(File.separator, splitPathList);
-
             String bucketName = getBucketName(sourcePath);
             String blobName = getBlobName(sourcePath);
 
@@ -150,7 +145,7 @@ public class GSPlugin extends Plugin {
             try {
                 fileContent = new FileOutputStream((destination.toFile()));
             } catch (FileNotFoundException e) {
-                System.err.println("File not found exception:" + e.getMessage());
+                System.err.println("Could not open destination file. File not found exception:" + e.getMessage());
                 return false;
             }
 
@@ -209,22 +204,11 @@ public class GSPlugin extends Plugin {
 
             Storage gsClient = getGoogleGSClient();
 
-            //String trimmedPath = destPath.replace("gs://", "");
-            //List<String> splitPathList = Lists.newArrayList(trimmedPath.split("/"));
-            //String bucketName = splitPathList.remove(0);
-            //String blobName = String.join(File.separator, splitPathList);
-
             String bucketName = getBucketName(destPath);
             String blobName = getBlobName(destPath);
 
             BlobId blobId = BlobId.of(bucketName, blobName);
             BlobInfo blobInfo;
-
-            // To test metadata uncomment the lines below
-            //Map<String,String> myMap = new HashMap<String, String>();
-            //myMap.put("goat", "bleat");
-            //myMap.put("cow", "moo");
-            //metadata = Optional.of(myMap.toString());
 
             if (metadata.isPresent()) {
                 Gson gson = new Gson();
@@ -233,9 +217,6 @@ public class GSPlugin extends Plugin {
 
                 try {
                     Map<String, String> map = gson.fromJson(metadata.get(), type);
-                    //for (Map.Entry<String, String> entry : map.entrySet()) {
-                    //    System.out.println("Loading " + entry.getKey() + "->" + entry.getValue());
-                    //}
                     blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).setMetadata(map).build();
                 } catch (com.google.gson.JsonSyntaxException ex) {
                     System.err.println(
@@ -251,8 +232,7 @@ public class GSPlugin extends Plugin {
             if (inputSize > MAX_FILE_SIZE_FOR_SINGLE_WRITE) {
                 // When content is not available or large (1MB or more) it is recommended
                 // to write it in chunks via the blob's channel writer.
-                try {
-                    WriteChannel writer = gsClient.writer(blobInfo);
+                try (WriteChannel writer = gsClient.writer(blobInfo)) {
                     byte[] buffer = new byte[UPLOAD_BUFFER_SIZE];
                     try (InputStream input = Files.newInputStream(sourceFile)) {
                         int limit;
@@ -263,16 +243,15 @@ public class GSPlugin extends Plugin {
                                 runningTotal = runningTotal + limit;
                                 printer.handleProgress(runningTotal, inputSize);
                             } catch (Exception ex) {
-                                System.err.println("Could not write file:" + ex.getMessage());
+                                System.err.println("Could not write to upload destination file:" + ex.getMessage());
                                 ex.printStackTrace();
                                 return false;
                             }
                         }
                     } catch (FileNotFoundException e) {
-                        System.err.println("File not found exception:" + e.getMessage());
+                        System.err.println("Could not read file to upload. File not found exception:" + e.getMessage());
                         return false;
                     }
-                    writer.close();
                 } catch (IOException e) {
                     System.err.println("Could not upload file. IO exception:" + e.getMessage());
                     return false;

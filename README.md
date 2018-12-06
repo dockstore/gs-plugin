@@ -25,6 +25,7 @@ $ dockstore tool launch --entry  quay.io/briandoconnor/dockstore-tool-md5sum  --
 
 
 Note that metadata is Base64 encoded in the JSON and creates metadata tags on the uploaded file.
+Also input and output paths do not necessarily exist and are for example only.
 
 ## Configuration
 
