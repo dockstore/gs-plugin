@@ -80,6 +80,7 @@ public class GSPlugin extends Plugin {
         private static final int MAX_FILE_SIZE_FOR_SINGLE_WRITE = 1_000_000;
         private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024;
         private static final int UPLOAD_BUFFER_SIZE = 1024;
+        private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
         private Map<String, String> config;
 
         public void setConfiguration(Map<String, String> map) {
@@ -194,16 +195,17 @@ public class GSPlugin extends Plugin {
         public boolean uploadTo(String destPath, Path sourceFile, Optional<String> metadata) {
             long inputSize = sourceFile.toFile().length();
 
-            String contentType = "application/octet-stream";
+            String contentType;
             try {
                 contentType = Files.probeContentType(sourceFile);
             } catch (IOException e) {
+                contentType = DEFAULT_CONTENT_TYPE;
                 System.err.println("Could not get content type of file. Using default content type. IO exception:" + e.getMessage());
             }
 
             // Bug on Mac where Files.probeContentType returns null
             if (contentType == null)
-                contentType = "application/octet-stream";
+                contentType = DEFAULT_CONTENT_TYPE;
 
             Storage gsClient = getGoogleGSClient();
 
