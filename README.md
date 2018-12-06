@@ -34,4 +34,6 @@ This plugin gets configuration information from the following structure in ~/.do
 ```
 [dockstore-file-gs-plugin]
 endpoint = <endpoint>
+
 ```
+
