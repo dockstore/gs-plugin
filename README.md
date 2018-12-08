@@ -2,16 +2,24 @@
 Dockstore Google Cloud Storage file provisioning plugin
 
 The gs-plugin enables download, upload, and setting metadata on uploaded objects for
-Google Cloud Storage (GCS) on the Google Cloud Platform (GCP).
+Google Cloud Storage (GCS) on the Google Cloud Platform (GCP) through the Google Cloud Storage Client library 
 
-To access GCS from a local machine you will need to install the Google Cloud SDK;
-Instructions for installation and other topics can be found here: https://cloud.google.com/sdk/docs/how-to
+To allow gs-plugin to run the Google Cloud Storage Client library you must setup authentication;
+follow the instructions for setting up authentication as described in 
+https://cloud.google.com/storage/docs/reference/libraries. 
 
-In order to utilize GCS you must usually authorize Google Cloud SDK tools:
-https://cloud.google.com/sdk/docs/authorizing
-
-Once this is done the gs-plugin, which utilizes the Google Cloud SDK tools, can download and upload files
+Once authentication is setup the gs-plugin can download and upload files
 when it detects a path pointing to a GCS location, e.g. gs://bucket/path_to_file
+
+###Note
+The above instructions describe setting up a service account for authentication; 
+however the gs-plugin can also obtain authentication through a user account
+as described here https://cloud.google.com/sdk/docs/authorizing#types_of_accounts. 
+
+To optionally setup user account authentication you can install the Google Cloud SDK and use
+the gcloud utility from the command line. Instructions for SDK installation and other topics 
+can be found here: https://cloud.google.com/sdk/docs/how-to
+
 
 ## Usage
 
