@@ -124,13 +124,13 @@ public class GSPlugin extends Plugin {
             try {
                 blobMetadata = gsClient.get(bucketName, blobName, Storage.BlobGetOption.fields(Storage.BlobField.values()));
             } catch (StorageException e) {
-                System.err.println("Could not get metadata on file " + sourcePath +
+                System.err.println("Could not get metadata for download source file " + sourcePath +
                         " Storage exception:" + e.getMessage());
                 return false;
             }
 
             if (blobMetadata == null) {
-                System.err.println("Could not get metadata on file " + sourcePath + " Please check the file path.");
+                System.err.println("Could not get metadata for download source file " + sourcePath + " Please check the file path.");
                 return false;
             }
 
@@ -140,7 +140,7 @@ public class GSPlugin extends Plugin {
             try {
                 blob = gsClient.get(BlobId.of(bucketName, blobName));
             } catch (StorageException e) {
-                System.err.println("gsClient get download exception:" + e.getMessage());
+                System.err.println("Could not get info for dowload source file " + sourcePath + " Storage exception:" + e.getMessage());
                 return false;
             }
 
@@ -149,7 +149,7 @@ public class GSPlugin extends Plugin {
             try {
                 Files.createDirectories(destination.getParent());
             } catch (IOException e) {
-                System.err.println("Could not create destination path " + destination.toString() +
+                System.err.println("Could not create download destination file " + destination.toString() +
                         " IO exception:" + e.getMessage());
                 return false;
             }
@@ -160,7 +160,7 @@ public class GSPlugin extends Plugin {
             try {
                 fileContent = new FileOutputStream((destination.toFile()));
             } catch (FileNotFoundException e) {
-                System.err.println("Could not open destination file " + destination.toString() +
+                System.err.println("Could not open downoad destination file " + destination.toString() +
                         " File not found exception:" + e.getMessage());
                 return false;
             }
@@ -169,14 +169,23 @@ public class GSPlugin extends Plugin {
 
             if (blob.getSize() < MAX_FILE_SIZE_FOR_SINGLE_WRITE) {
                 // Blob is small read all its content in one request
-                byte[] content = blob.getContent();
+                byte[] content;
+                try {
+                    content = blob.getContent();
+                } catch (StorageException e) {
+                    System.err.println("Could read download source file " + sourcePath.toString() +
+                            " Storage exception:" + e.getMessage());
+                    return false;
+                }
+
                 try {
                     writeTo.write(content);
                 } catch (IOException e) {
-                    System.err.println("Could not write destination file " + destination.toString() +
+                    System.err.println("Could not write download destination file " + destination.toString() +
                             " IO exception:" + e.getMessage());
                     return false;
                 }
+
             } else {
                 // When Blob size is big or unknown use the blob's channel reader.
                 try (ReadChannel reader = blob.reader()) {
@@ -186,20 +195,31 @@ public class GSPlugin extends Plugin {
                         int limit;
                         long runningTotal = 0;
                         while ((limit = reader.read(bytes)) > 0) {
-                            bytes.flip();
-                            channel.write(bytes);
-                            bytes.clear();
-                            runningTotal = runningTotal + limit;
-                            printer.handleProgress(runningTotal, inputSize);
+                            try {
+                                bytes.flip();
+                                channel.write(bytes);
+                                bytes.clear();
+                                runningTotal = runningTotal + limit;
+                                printer.handleProgress(runningTotal, inputSize);
+                            } catch (IOException ex) {
+                                System.err.println("Could not write download destination file " +
+                                        destination.toString() + " IO Exception " + ex.getMessage());
+                                return false;
+                            }
                         }
                     } catch (IOException e) {
-                        System.err.println("Could not download file " + sourcePath +
+                        System.err.println("Could not read download source file " + sourcePath +
                                 " IO exception:" + e.getMessage());
                         return false;
                     }
+                } catch (StorageException e) {
+                    System.err.println("Could not access download destination file " + sourcePath.toString() +
+                            " StorageException:" + e.getMessage());
+                    return false;
                 } catch (Exception e) {
                     System.err.println("Could not download file " + sourcePath +
                             " Exception:" + e.getMessage());
+                    e.printStackTrace();
                     return false;
                 }
             }
@@ -216,7 +236,7 @@ public class GSPlugin extends Plugin {
                 contentType = Files.probeContentType(sourceFile);
             } catch (IOException e) {
                 contentType = DEFAULT_CONTENT_TYPE;
-                System.err.println("Could not get content type of file " + sourceFile.toString() +
+                System.err.println("Could not get content type of upload source file " + sourceFile.toString() +
                         " Using default content type " + DEFAULT_CONTENT_TYPE + " IO exception:" + e.getMessage());
             }
 
@@ -242,8 +262,8 @@ public class GSPlugin extends Plugin {
                     blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).setMetadata(map).build();
                 } catch (com.google.gson.JsonSyntaxException ex) {
                     System.err.println(
-                            "Could not load metadata. Metadata syntax exception. "
-                                    + "Uploading file without metadata:" + ex.getMessage());
+                            "Could not set metadata for upload destination file " + destPath.toString() +
+                                    " Metadata syntax exception. Uploading file without metadata:" + ex.getMessage());
                     blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).build();
                 }
             } else {
@@ -265,29 +285,25 @@ public class GSPlugin extends Plugin {
                                 writer.write(ByteBuffer.wrap(buffer, 0, limit));
                                 runningTotal = runningTotal + limit;
                                 printer.handleProgress(runningTotal, inputSize);
-                            } catch (Exception ex) {
-                                System.err.println("Could not write to upload destination file " +
-                                        destPath.toString() + " Exception " + ex.getMessage());
-                                ex.printStackTrace();
+                            } catch (IOException ex) {
+                                System.err.println("Could not write upload destination file " +
+                                        destPath.toString() + " IO Exception " + ex.getMessage());
                                 return false;
                             }
                         }
-                    } catch (FileNotFoundException e) {
-                        System.err.println("Could not read file " + sourceFile.toString() +
-                                " to upload. File not found exception:" + e.getMessage());
+                    } catch (IOException e) {
+                        System.err.println("Could not read upload source file " + sourceFile.toString() +
+                                " to upload. IO exception:" + e.getMessage());
                         return false;
                     }
-                } catch (IOException e) {
-                    System.err.println("Could not upload file " + sourceFile.toString() +
-                            " IO exception:" + e.getMessage());
-                    return false;
                 } catch (StorageException e) {
-                    System.err.println("Could not upload file " + sourceFile.toString() +
-                            " to " + destPath.toString() + "Please check file paths. StorageException:" + e.getMessage());
+                    System.err.println("Could not access upload destination file " + destPath.toString() +
+                            " StorageException:" + e.getMessage());
                     return false;
                 } catch (Exception e) {
                     System.err.println("Could not upload file " + sourceFile.toString() +
                             " to " + destPath.toString() + " Exception:" + e.getMessage());
+                    e.printStackTrace();
                     return false;
                 }
             } else {
@@ -295,7 +311,7 @@ public class GSPlugin extends Plugin {
                 try {
                     bytes = Files.readAllBytes(sourceFile);
                 } catch (IOException e) {
-                    System.err.println("Could not read file " + sourceFile.toString() +
+                    System.err.println("Could not read upload source file " + sourceFile.toString() +
                             " to upload. IO exception:" + e.getMessage());
                     return false;
                 }
@@ -303,7 +319,7 @@ public class GSPlugin extends Plugin {
                 try {
                     gsClient.create(blobInfo, bytes);
                 } catch (StorageException e) {
-                    System.err.println("Could not upload file " + sourceFile.toString() +
+                    System.err.println("Could not write upload destination file " + destPath.toString() +
                             " Storage exception:" + e.getMessage());
                     return false;
                 }
