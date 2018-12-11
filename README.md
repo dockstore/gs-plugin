@@ -29,12 +29,12 @@ $ cat test.gs.json
 {
   "input_file": {
         "class": "File",
-        "path": "gs://oicr.temp/bamstats_report.zip"
+        "path": "gs://genomics-public-data/references/GRCh38/chr1.fa.gz"
           },
     "output_file": {
         "class": "File",
         "metadata": "eyJvbmUiOiJ3b24iLCJ0d28iOiJ0d28ifQ==",
-        "path": "gs://oicr.temp/bamstats_report.zip"
+        "path": "gs://my_bucket/bamstats_report.zip"
     }
 }
 ```
