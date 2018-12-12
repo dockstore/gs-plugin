@@ -34,11 +34,16 @@ $ cat test.gs.json
     "output_file": {
         "class": "File",
         "metadata": "eyJvbmUiOiJ3b24iLCJ0d28iOiJ0d28ifQ==",
-        "path": "gs://my_bucket/bamstats_report.zip"
+        "path": "gs://my_bucket/chr1_md5sum.zip"
     }
 }
 ```
-Note that metadata is Base64 encoded in the JSON and creates metadata tags on the uploaded file.
+Note that metadata is Base64 encoded JSON and creates metadata tags on the uploaded file.
+E.g to encode metadata: 
+```
+$ echo -n '{"one":"won","two":"two"}' | base64
+$ eyJvbmUiOiJ3b24iLCJ0d28iOiJ0d28ifQ==
+```
 Also input and output paths do not necessarily exist and are for example only.
 
 Here is an example command line to launch the tool:
