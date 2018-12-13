@@ -11,6 +11,8 @@ https://cloud.google.com/storage/docs/reference/libraries.
 Once authentication is setup the gs-plugin can download and upload files
 when it detects a path pointing to a GCS location, e.g. gs://bucket/path_to_file
 
+Find out more about metadata here: 
+https://cloud.google.com/storage/docs/gsutil/addlhelp/WorkingWithObjectMetadata#custom-metadata
 ### Note
 The above instructions describe setting up a service account for authentication; 
 however the gs-plugin can also obtain authentication through a user account

@@ -119,7 +119,6 @@ public class GSPlugin extends Plugin {
             String bucketName = getBucketName(sourcePath);
             String blobName = getBlobName(sourcePath);
 
-            //Blob blobMetadata = gsClient.get(bucketName, blobName, Storage.BlobGetOption.fields(Storage.BlobField.values()));
             Blob blobMetadata;
             try {
                 blobMetadata = gsClient.get(bucketName, blobName, Storage.BlobGetOption.fields(Storage.BlobField.values()));
@@ -154,19 +153,6 @@ public class GSPlugin extends Plugin {
                 return false;
             }
 
-            ProgressPrinter printer = new ProgressPrinter();
-
-            FileOutputStream fileContent;
-            try {
-                fileContent = new FileOutputStream((destination.toFile()));
-            } catch (FileNotFoundException e) {
-                System.err.println("Could not open downoad destination file " + destination.toString() + " File not found exception:" +
-                        e.getMessage());
-                return false;
-            }
-
-            PrintStream writeTo = new PrintStream(fileContent);
-
             if (blob.getSize() < MAX_FILE_SIZE_FOR_SINGLE_WRITE) {
                 // Blob is small read all its content in one request
                 byte[] content;
@@ -177,8 +163,13 @@ public class GSPlugin extends Plugin {
                     return false;
                 }
 
-                try {
+                try (FileOutputStream fileContent = new FileOutputStream(destination.toFile());
+                        PrintStream writeTo = new PrintStream(fileContent)) {
                     writeTo.write(content);
+                } catch (FileNotFoundException e) {
+                    System.err.println("Could not open downoad destination file " + destination.toString() + " File not found exception:" +
+                            e.getMessage());
+                    return false;
                 } catch (IOException e) {
                     System.err.println(
                             "Could not write download destination file " + destination.toString() + " IO exception:" + e.getMessage());
@@ -187,10 +178,12 @@ public class GSPlugin extends Plugin {
 
             } else {
                 // When Blob size is big or unknown use the blob's channel reader.
-                try (ReadChannel reader = blob.reader()) {
+                try (FileOutputStream fileContent = new FileOutputStream(destination.toFile());
+                        ReadChannel reader = blob.reader(); PrintStream writeTo = new PrintStream(fileContent)) {
                     WritableByteChannel channel = Channels.newChannel(writeTo);
                     ByteBuffer bytes = ByteBuffer.allocate(DOWNLOAD_BUFFER_SIZE);
                     try {
+                        ProgressPrinter printer = new ProgressPrinter();
                         int limit;
                         long runningTotal = 0;
                         while ((limit = reader.read(bytes)) > 0) {
@@ -221,8 +214,6 @@ public class GSPlugin extends Plugin {
                     return false;
                 }
             }
-
-            writeTo.close();
             return true;
         }
 
@@ -269,7 +260,6 @@ public class GSPlugin extends Plugin {
                 blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).build();
             }
 
-            ProgressPrinter printer = new ProgressPrinter();
 
             if (inputSize > MAX_FILE_SIZE_FOR_SINGLE_WRITE) {
                 // When content is not available or large (1MB or more) it is recommended
@@ -277,6 +267,7 @@ public class GSPlugin extends Plugin {
                 try (WriteChannel writer = gsClient.writer(blobInfo)) {
                     byte[] buffer = new byte[UPLOAD_BUFFER_SIZE];
                     try (InputStream input = Files.newInputStream(sourceFile)) {
+                        ProgressPrinter printer = new ProgressPrinter();
                         int limit;
                         long runningTotal = 0;
                         while ((limit = input.read(buffer)) >= 0) {
