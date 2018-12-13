@@ -42,6 +42,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.Lists;
+import com.google.common.net.MediaType;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.lang3.StringUtils;
@@ -80,7 +81,7 @@ public class GSPlugin extends Plugin {
         private static final int MAX_FILE_SIZE_FOR_SINGLE_WRITE = 1_000_000;
         private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024;
         private static final int UPLOAD_BUFFER_SIZE = 1024;
-        private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
+        private static final String DEFAULT_CONTENT_TYPE = MediaType.OCTET_STREAM.toString();
         private Map<String, String> config;
 
         public void setConfiguration(Map<String, String> map) {
