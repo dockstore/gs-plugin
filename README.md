@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/dockstore/gs-plugin.svg?branch=gs-travis)](https://travis-ci.org/dockstore/gs-plugin)
+[![Coverage Status](https://coveralls.io/repos/github/dockstore/gs-plugin/badge.svg?branch=gs-travis)](https://coveralls.io/github/dockstore/gs-plugin?branch=master)
+
 # gs-plugin
 Dockstore Google Cloud Storage file provisioning plugin
 
