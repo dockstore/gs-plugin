@@ -20,6 +20,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
@@ -51,6 +52,8 @@ import ro.fortsoft.pf4j.Plugin;
 import ro.fortsoft.pf4j.PluginWrapper;
 import ro.fortsoft.pf4j.RuntimeMode;
 
+import static java.lang.Math.min;
+
 // Imports the Google Cloud client library
 
 /**
@@ -79,8 +82,9 @@ public class GSPlugin extends Plugin {
     public static class GSProvision implements ProvisionInterface {
 
         private static final int MAX_FILE_SIZE_FOR_SINGLE_WRITE = 1_000_000;
-        private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024;
-        private static final int UPLOAD_BUFFER_SIZE = 1024;
+        private static final int MAX_BUFFER_SIZE = 100 * 1024 * 1024;
+        private static final double PERCENT_OF_HEAP_SPACE_TO_USE = .20;
+
         private static final String DEFAULT_CONTENT_TYPE = MediaType.OCTET_STREAM.toString();
         private Map<String, String> config;
 
@@ -108,6 +112,16 @@ public class GSPlugin extends Plugin {
             // Remove the bucket name from the path
             List<String> splitPathListNoBucket = splitPathList.subList(1, splitPathList.size());
             return String.join(File.separator, splitPathListNoBucket);
+        }
+
+        private int getBufferSizeToUse() {
+            // Determine how much heap space is available for our buffer
+            long heapAvailable = Runtime.getRuntime().freeMemory();
+            // We will use a percentage of available heap bytes for the buffer
+            long heapBytesToUse = (long)(heapAvailable * PERCENT_OF_HEAP_SPACE_TO_USE);
+            // Limit the size of the buffer to a maximum
+            int bufferSizeToUse =  (int)min(heapBytesToUse, MAX_BUFFER_SIZE);
+            return bufferSizeToUse;
         }
 
         public Set<String> schemesHandled() {
@@ -179,10 +193,12 @@ public class GSPlugin extends Plugin {
 
             } else {
                 // When Blob size is big or unknown use the blob's channel reader.
-                try (FileOutputStream fileContent = new FileOutputStream(destination.toFile());
-                        ReadChannel reader = blob.reader(); PrintStream writeTo = new PrintStream(fileContent)) {
-                    WritableByteChannel channel = Channels.newChannel(writeTo);
-                    ByteBuffer bytes = ByteBuffer.allocate(DOWNLOAD_BUFFER_SIZE);
+                try (OutputStream targetFileOutputStream = Files.newOutputStream(destination);
+                            ReadChannel reader = blob.reader()) {
+
+                    WritableByteChannel channel = Channels.newChannel(targetFileOutputStream);
+                    int downloadBufferSize = getBufferSizeToUse();
+                    ByteBuffer bytes = ByteBuffer.allocate(downloadBufferSize);
                     try {
                         ProgressPrinter printer = new ProgressPrinter();
                         int limit;
@@ -266,7 +282,8 @@ public class GSPlugin extends Plugin {
                 // When content is not available or large (1MB or more) it is recommended
                 // to write it in chunks via the blob's channel writer.
                 try (WriteChannel writer = gsClient.writer(blobInfo)) {
-                    byte[] buffer = new byte[UPLOAD_BUFFER_SIZE];
+                    int uploadBufferSize = getBufferSizeToUse();
+                    byte[] buffer = new byte[uploadBufferSize];
                     try (InputStream input = Files.newInputStream(sourceFile)) {
                         ProgressPrinter printer = new ProgressPrinter();
                         int limit;
