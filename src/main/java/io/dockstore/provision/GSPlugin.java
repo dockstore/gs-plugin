@@ -52,6 +52,7 @@ import ro.fortsoft.pf4j.Plugin;
 import ro.fortsoft.pf4j.PluginWrapper;
 import ro.fortsoft.pf4j.RuntimeMode;
 
+import static java.lang.Math.max;
 import static java.lang.Math.min;
 
 // Imports the Google Cloud client library
@@ -83,6 +84,7 @@ public class GSPlugin extends Plugin {
 
         private static final int MAX_FILE_SIZE_FOR_SINGLE_WRITE = 1_000_000;
         private static final int MAX_BUFFER_SIZE = 100 * 1024 * 1024;
+        private static final int MIN_BUFFER_SIZE = 64 * 1024;
         private static final double PERCENT_OF_HEAP_SPACE_TO_USE = .20;
 
         private static final String DEFAULT_CONTENT_TYPE = MediaType.OCTET_STREAM.toString();
@@ -114,13 +116,26 @@ public class GSPlugin extends Plugin {
             return String.join(File.separator, splitPathListNoBucket);
         }
 
+        /**
+         * Determines the size of the buffer to use when reading and writing
+         * data to upload or download from GCS storage. We try to use a large
+         * buffer to increase the performance, i.e. download or upload speed,
+         * to and from cloud storage. The Google cloud storage library
+         * performance is not as good when accessing gs:// URLS as when http://
+         * URLs are used when the buffer is less than about 50MB in our tests.
+         * See issue https://github.com/googleapis/google-cloud-java/issues/3929
+         *
+         * @return The buffer size to use when uploading or downloading data
+         */
         private int getBufferSizeToUse() {
             // Determine how much heap space is available for our buffer
             long heapAvailable = Runtime.getRuntime().freeMemory();
             // We will use a percentage of available heap bytes for the buffer
             long heapBytesToUse = (long)(heapAvailable * PERCENT_OF_HEAP_SPACE_TO_USE);
             // Limit the size of the buffer to a maximum
-            int bufferSizeToUse =  (int)min(heapBytesToUse, MAX_BUFFER_SIZE);
+            int maxBufferSizeToUse =  (int)min(heapBytesToUse, MAX_BUFFER_SIZE);
+            // but use a minimum size buffer; we assume the minimum is reasonable
+            int bufferSizeToUse =  max(maxBufferSizeToUse, MIN_BUFFER_SIZE);
             return bufferSizeToUse;
         }
 
