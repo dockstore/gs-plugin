@@ -6,7 +6,7 @@
     <artifactId>dockstore-file-gs-plugin</artifactId>
     <packaging>jar</packaging>
     <name>dockstore-file-gs-plugin</name>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3-SNAPSHOT</version>
 
     <properties>
         <plugin.id>${project.artifactId}</plugin.id>
@@ -223,7 +223,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
-            <version>1.51.0</version>
+            <version>1.70.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
