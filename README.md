@@ -4,28 +4,15 @@
 # gs-plugin
 Dockstore Google Cloud Storage file provisioning plugin
 
-The gs-plugin enables download, upload, and setting metadata on uploaded objects for
-Google Cloud Storage (GCS) on the Google Cloud Platform (GCP) through the Google Cloud Storage Client library 
+The gs-plugin enables download, upload, and setting metadata on uploaded objects for Google Cloud Storage (GCS) on the Google Cloud Platform (GCP) through the Google Cloud Storage Client library. Once authentication is set up, the gs-plugin can download and upload files when it detects a path pointing to a GCS location, e.g. gs://bucket/path_to_file
 
-To allow gs-plugin to run the Google Cloud Storage Client library you must setup authentication;
-follow the instructions for setting up authentication as described in 
-https://cloud.google.com/storage/docs/reference/libraries. 
+To allow gs-plugin to run the Google Cloud Storage Client library you must setup authentication.
+* For user accounts: https://cloud.google.com/sdk/docs/how-to
+* For service accounts: https://cloud.google.com/storage/docs/reference/libraries
 
-Once authentication is setup the gs-plugin can download and upload files
-when it detects a path pointing to a GCS location, e.g. gs://bucket/path_to_file
-
-Find out more about metadata here: 
-https://cloud.google.com/storage/docs/gsutil/addlhelp/WorkingWithObjectMetadata#custom-metadata
-
-### Note
-The above instructions describe setting up a service account for authentication; 
-however the gs-plugin can also obtain authentication through a user account
-as described here https://cloud.google.com/sdk/docs/authorizing#types_of_accounts. 
-
-To optionally setup user account authentication you can install the Google Cloud SDK and use
-the gcloud utility from the command line. Instructions for SDK installation and other topics 
-can be found here: https://cloud.google.com/sdk/docs/how-to
-
+More information:
+* Service vs user accounts: https://cloud.google.com/sdk/docs/authorizing#types_of_accounts
+* https://cloud.google.com/storage/docs/gsutil/addlhelp/WorkingWithObjectMetadata#custom-metadata
 
 ## Usage
 
@@ -57,7 +44,8 @@ Here is an example command line to launch the tool:
 $ dockstore tool launch --entry  quay.io/briandoconnor/dockstore-tool-md5sum  --json test.gs.json
 ```
 
-## Releases
+------
+## Information for Developers
 
 This section describes creating a release of the Google Cloud Storage file provisioning plugin.
 
@@ -91,7 +79,7 @@ Then do `git hf release finish 0.0.4`, which will
 * Delete the release/0.0.4 branch, locally and in the origin
 * Push the develop and master branches, as well as the `0.0.4` tag.
 
-#### Create a GitHub release
+### Create a GitHub release
 
 1. In your browser, go to https://github.com/dockstore/gs-plugin/releases
 2. You will see `0.0.4` listed, but it is *not* a GitHub release, it is a only tag. All GitHub releases have Git tags, but not all Git tags
